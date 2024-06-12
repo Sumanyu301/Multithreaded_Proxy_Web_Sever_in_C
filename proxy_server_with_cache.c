@@ -30,7 +30,7 @@ struct cacheElement
 };
 
 struct cacheElement *find(char *url);
-int add_cacheElement(char *data, int size, char *url);
+int add_cache_element(char *data, int size, char *url);
 void remove_cacheElement();
 
 int port_number = 8080;
@@ -135,7 +135,7 @@ int connectRemoteServer(char *host_addr, int port_num)
     return remoteSocket;
 }
 
-int handle_request(int clientSocket, struct ParsedRequest *request, char *tempReq)
+int handle_request(int clientSocket, struct ParsedRequest *request, char *url)
 {
     char *buf = (char *)malloc(sizeof(char) * MAX_BYTES);
     strcpy(buf, "GET ");
@@ -162,7 +162,7 @@ int handle_request(int clientSocket, struct ParsedRequest *request, char *tempRe
     if (ParsedRequest_unparse_headers(request, buf + len, (size_t)MAX_BYTES - len) < 0)
     {
         printf("unparse failed\n");
-        // return -1;				// If this happens Still try to send request without header
+        // return -1;                // If this happens Still try to send request without header
     }
 
     int server_port = 80; // Default Remote Server Port
@@ -183,7 +183,7 @@ int handle_request(int clientSocket, struct ParsedRequest *request, char *tempRe
     int temp_buffer_size = MAX_BYTES;
     int temp_buffer_index = 0;
 
-    while (bytes_send > 0) // recieve not sent
+    while (bytes_send > 0) // receive not sent
     {
         bytes_send = send(clientSocket, buf, bytes_send, 0);
 
@@ -207,7 +207,7 @@ int handle_request(int clientSocket, struct ParsedRequest *request, char *tempRe
     }
     temp_buffer[temp_buffer_index] = '\0';
     free(buf);
-    add_cache_element(temp_buffer, strlen(temp_buffer), tempReq);
+    add_cache_element(temp_buffer, strlen(temp_buffer), url);
     printf("Done\n");
     free(temp_buffer);
 
@@ -360,7 +360,7 @@ int main(int argc, char *argv[])
 {
     int client_socketId, client_len;
     struct sockaddr_in server_addr, client_addr;
-    struct ParsedRequest *request;
+    // struct ParsedRequest *request;  // Remove this line
     sem_init(&semaphore, 0, MAX_CLIENTS); // 0 means semaphore is shared between threads and 1 means semaphore is shared between processes
     pthread_mutex_init(&lock, NULL);      // null else garbage
     if (argc == 2)
