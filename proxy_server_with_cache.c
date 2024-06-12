@@ -187,7 +187,7 @@ int handle_request(int clientSocket, struct ParsedRequest *request, char *tempRe
     {
         bytes_send = send(clientSocket, buf, bytes_send, 0);
 
-        for (int i = 0; i < bytes_send / sizeof(char); i++)
+        for (size_t i = 0; i < bytes_send / sizeof(char); i++)
         {
             temp_buffer[temp_buffer_index] = buf[i];
             // printf("%c",buf[i]); // Response Printing
@@ -268,7 +268,7 @@ void *thread_fn(void *socketNew)
 
     char *tempReq = (char *)malloc(strlen(buffer) * sizeof(char) + 1);
     // tempReq, buffer both store the http request sent by client
-    for (int i = 0; i < strlen(buffer); i++)
+    for (size_t i = 0; i < strlen(buffer); i++)
     {
         tempReq[i] = buffer[i];
     }
@@ -363,7 +363,7 @@ int main(int argc, char *argv[])
     struct ParsedRequest *request;
     sem_init(&semaphore, 0, MAX_CLIENTS); // 0 means semaphore is shared between threads and 1 means semaphore is shared between processes
     pthread_mutex_init(&lock, NULL);      // null else garbage
-    if (argv == 2)
+    if (argc == 2)
     {
         port_number = atoi(argv[1]);
         // when we write in console ./proxy 8080 then  ./proxy 0 and port number 8080 1 as it takes it as a string
