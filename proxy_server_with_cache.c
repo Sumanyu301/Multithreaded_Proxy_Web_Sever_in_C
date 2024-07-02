@@ -40,7 +40,7 @@ int port_number = 8080;     // Default Port
 int proxy_socketId;         // socket descriptor of proxy server
 pthread_t tid[MAX_CLIENTS]; // array to store the thread ids of clients
 sem_t seamaphore;           // if client requests exceeds the max_clients this seamaphore puts the
-                  // waiting threads to sleep and wakes them when traffic on queue decreases
+                            // waiting threads to sleep and wakes them when traffic on queue decreases
 // sem_t cache_lock;
 pthread_mutex_t lock; // lock is used for locking the cache
 
@@ -309,7 +309,7 @@ void *thread_fn(void *socketNew)
     {
         len = strlen(buffer);
         // Parsing the request
-        ParsedRequest *request = ParsedRequest_create();
+        struct ParsedRequest *request = ParsedRequest_create();
 
         // ParsedRequest_parse returns 0 on success and -1 on failure.On success it stores parsed request in
         //  the request
