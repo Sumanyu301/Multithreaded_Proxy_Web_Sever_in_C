@@ -363,11 +363,19 @@ void *thread_fn(void *socketNew)
     return NULL;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[])//argc has the number of arguments passed to the program and argv is a pointer to the array of character pointers like ./proxy 8080 8080 is the second argv[1]
 {
 
     int client_socketId, client_len;             // client_socketId == to store the client socket id
     struct sockaddr_in server_addr, client_addr; // Address of client and server to be assigned
+
+//     struct sockaddr_in {
+//     sa_family_t sin_family;  Address family, AF_INET for IPv4
+//     in_port_t sin_port;      Port number in network byte order
+//     struct in_addr sin_addr;  Internet address
+// };
+
+
 
     sem_init(&seamaphore, 0, MAX_CLIENTS); // Initializing seamaphore and lock
     pthread_mutex_init(&lock, NULL);       // Initializing lock for cache
@@ -388,19 +396,24 @@ int main(int argc, char *argv[])
     proxy_socketId = socket(AF_INET, SOCK_STREAM, 0);//int domain int type int protocol
     //AF_INET is used to represent the IPv4 address of the client to which a connection should be made. 
     //Similarly AF_INET6 is used for IPv6 addresses. These sockets are called internet domain sockets.
-
-    if (proxy_socketId < 0)
+    //In this case, setting the protocol to 0 means that the default protocol (which is TCP for SOCK_STREAM) will be used.
+    if (proxy_socketId < 0)//as in case of error it returns -1
     {
         perror("Failed to create socket.\n");
         exit(1);
     }
 
-    int reuse = 1;
-    if (setsockopt(proxy_socketId, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) < 0)
-        perror("setsockopt(SO_REUSEADDR) failed\n");
+    int reuse = 1; //this is to enable the reuse of the address
 
+    //This option allows the socket to bind to an address that is already in use, 
+    //which is particularly useful for server applications that need to restart 
+    //and bind to the same port without waiting for the previous socket to fully close.
+    if (setsockopt(proxy_socketId, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) < 0)//Casting to const char * is a way to ensure that the pointer is treated as a generic byte pointer, which is suitable for passing data of any type.
+        perror("setsockopt(SO_REUSEADDR) failed\n");//You're right, reuse is an integer variable, so casting it to (const char *) may seem odd at first glance. However, this is a common practice in C programming when working with the setsockopt() function.
+        //  The setsockopt() function expects a const void * pointer as the value parameter, which can point to any data type. By casting &reuse to (const char *), you're telling the compiler to treat the memory address of reuse as a pointer to a sequence of bytes (characters).
+        //sizeof makes sure that 
     bzero((char *)&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
+    server_addr.sin_family = AF_INET; //This field specifies the address family, which is typically set to AF_INET for IPv4 addresses.
     server_addr.sin_port = htons(port_number); // Assigning port to the Proxy
     server_addr.sin_addr.s_addr = INADDR_ANY;  // Any available adress assigned
 
@@ -413,7 +426,7 @@ int main(int argc, char *argv[])
     printf("Binding on port: %d\n", port_number);
 
     // Proxy socket listening to the requests
-    int listen_status = listen(proxy_socketId, MAX_CLIENTS);
+    int listen_status = listen(proxy_socketId, MAX_CLIENTS);//marks the maximum number of connection requests that can be made to the server by client nodes at a time
 
     if (listen_status < 0)
     {
