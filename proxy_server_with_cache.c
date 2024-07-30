@@ -445,6 +445,8 @@ int main(int argc, char *argv[])//argc has the number of arguments passed to the
         client_len = sizeof(client_addr);
 
         // Accepting the connections
+        //The accept() function is a blocking call. This means that when the server reaches this line of code, it will wait (block) until a client attempts to connect to the server.
+        //If there are no pending connection requests in the listen queue, the server will remain blocked at this point until a new client connects.
         client_socketId = accept(proxy_socketId, (struct sockaddr *)&client_addr, (socklen_t *)&client_len); // Accepts connection
         if (client_socketId < 0)
         {
@@ -457,16 +459,20 @@ int main(int argc, char *argv[])//argc has the number of arguments passed to the
         }
 
         // Getting IP address and port number of client
-        struct sockaddr_in *client_pt = (struct sockaddr_in *)&client_addr;
-        struct in_addr ip_addr = client_pt->sin_addr;
-        char str[INET_ADDRSTRLEN]; // INET_ADDRSTRLEN: Default ip address size
-        inet_ntop(AF_INET, &ip_addr, str, INET_ADDRSTRLEN);
+        struct sockaddr_in *client_pt = (struct sockaddr_in *)&client_addr;//Since the server is dealing with IPv4 addresses, it casts client_addr to struct sockaddr_in *, which contains fields specific to IPv4 addresses.
+        struct in_addr ip_addr = client_pt->sin_addr;//this line retrieves the sin_addr field from the client_pt, which contains the client's IP address in binary format (a 32-bit integer).
+        char str[INET_ADDRSTRLEN]; // INET_ADDRSTRLEN: Default ip address size INET_ADDRSTRLEN is typically defined as 16
+        inet_ntop(AF_INET, &ip_addr, str, INET_ADDRSTRLEN);//The inet_ntop() function converts the binary representation of the IP address (ip_addr) into a human-readable string format and stores it in str.
+                                                            //The first argument AF_INET specifies that the address is an IPv4 address.
         printf("Client is connected with port number: %d and ip address: %s \n", ntohs(client_addr.sin_port), str);
-        // printf("Socket values of index %d in main function is %d\n",i, client_socketId);
+        //This line prints the port number and IP address of the connected client.
+        //The port number is retrieved from client_addr.sin_port, which is in network byte order. The ntohs() function converts it to host byte order for correct display.
+        
         pthread_create(&tid[i], NULL, thread_fn, (void *)&Connected_socketId[i]); // Creating a thread for each client accepted
+        //After obtaining the client's information, the server typically creates a new thread (or uses a process) to handle the client's requests, allowing it to continue accepting new connections.
         i++;
     }
-    close(proxy_socketId); // Close socket
+    close(proxy_socketId); // Close socket After the loop (which is actually infinite and only ends if the program is stopped)
     return 0;
 }
 
