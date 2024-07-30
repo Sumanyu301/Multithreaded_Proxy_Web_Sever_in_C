@@ -141,7 +141,7 @@ int connectRemoteServer(char *host_addr, int port_num)
     return remoteSocket;
 }
 
-int handle_request(int clientSocket, ParsedRequest *request, char *tempReq)
+int handle_request(int clientSocket, struct ParsedRequest *request, char *tempReq)
 {
     char *buf = (char *)malloc(sizeof(char) * MAX_BYTES);
     strcpy(buf, "GET ");
@@ -166,7 +166,7 @@ int handle_request(int clientSocket, ParsedRequest *request, char *tempReq)
     }
 
     if (ParsedRequest_unparse_headers(request, buf + len, (size_t)MAX_BYTES - len) < 0)
-    {
+    {   
         printf("unparse failed\n");
         // return -1;				// If this happens Still try to send request without header
     }
@@ -385,7 +385,9 @@ int main(int argc, char *argv[])
     printf("Setting Proxy Server Port : %d\n", port_number);
 
     // creating the proxy socket
-    proxy_socketId = socket(AF_INET, SOCK_STREAM, 0);
+    proxy_socketId = socket(AF_INET, SOCK_STREAM, 0);//int domain int type int protocol
+    //AF_INET is used to represent the IPv4 address of the client to which a connection should be made. 
+    //Similarly AF_INET6 is used for IPv6 addresses. These sockets are called internet domain sockets.
 
     if (proxy_socketId < 0)
     {
