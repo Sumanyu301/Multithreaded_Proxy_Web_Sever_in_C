@@ -277,9 +277,9 @@ void *thread_fn(void *socketNew)// its the new socket creted by accept for every
         }
     }
 
-    // printf("--------------------------------------------\n");
-    // printf("%s\n",buffer);
-    // printf("----------------------%d----------------------\n",strlen(buffer));
+    printf("--------------------------------------------\n");
+    printf("%s\n",buffer);
+    printf("----------------------%d----------------------\n",strlen(buffer));
 
     char *tempReq = (char *)malloc(strlen(buffer) * sizeof(char) + 1);
     // tempReq, buffer both store the http request sent by client
