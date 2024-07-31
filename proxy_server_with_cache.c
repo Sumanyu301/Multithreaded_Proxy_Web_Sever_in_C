@@ -166,7 +166,7 @@ int handle_request(int clientSocket, struct ParsedRequest *request, char *tempRe
     }
 
     if (ParsedRequest_unparse_headers(request, buf + len, (size_t)MAX_BYTES - len) < 0)
-    {   
+    {
         printf("unparse failed\n");
         // return -1;				// If this happens Still try to send request without header
     }
@@ -239,26 +239,35 @@ int checkHTTPversion(char *msg)
     return version;
 }
 
-void *thread_fn(void *socketNew)
+void *thread_fn(void *socketNew)// its the new socket creted by accept for every client connected.
 {
     sem_wait(&seamaphore);
     int p;
-    sem_getvalue(&seamaphore, &p);
-    printf("semaphore value:%d\n", p);
-    int *t = (int *)(socketNew);
+    int *t = (int *)(socketNew);//descriptors are integers so typecasting it back to int
     int socket = *t;            // Socket is socket descriptor of the connected Client
     int bytes_send_client, len; // Bytes Transferred
 
     char *buffer = (char *)calloc(MAX_BYTES, sizeof(char)); // Creating buffer of 4kb for a client
 
     bzero(buffer, MAX_BYTES);                               // Making buffer zero
-    bytes_send_client = recv(socket, buffer, MAX_BYTES, 0); // Receiving the Request of client by proxy server
+    bytes_send_client = recv(socket, buffer, MAX_BYTES, 0); // recv(socket, buffer, MAX_BYTES, 0): Receives data from the client socket and stores it in buffer. The function reads up to MAX_BYTES bytes.
+    //This variable is intended to store the number of bytes received from the socket. The recv function returns the number of bytes actually read into the buffer. If the return value is -1, it indicates an error occurred during the reception of data
+    //This is a pointer to a memory area (an array) where the received data will be stored. The buffer should be large enough to hold the incoming data. The data received will be copied into this buffer starting from the first byte.
+    //if the data being received is larger than the specified MAX_BYTES in the recv() function, the data will not automatically be received in multiple calls. Instead, the recv() function will only read up to MAX_BYTES bytes in a single call.
+    //0: No special options; the function behaves normally.
 
-    while (bytes_send_client > 0)
+//Here’s a simplified example of an HTTP GET request
+//GET /index.html HTTP/1.1\r\n
+// Host: www.example.com\r\n
+// User-Agent: Mozilla/5.0\r\n
+// Accept: text/html\r\n
+// \r\n
+
+    while (bytes_send_client > 0)//data chunks mein aayega isliye loop
     {
-        len = strlen(buffer);
+        len = strlen(buffer);//This line calculates the current length of the data stored in buffer. This is important because it determines where to append new data received from the socket.
         // loop until u find "\r\n\r\n" in the buffer
-        if (strstr(buffer, "\r\n\r\n") == NULL)
+        if (strstr(buffer, "\r\n\r\n") == NULL)//If "\r\n\r\n" is found in the buffer, the loop breaks, indicating that the complete HTTP headers have been received.
         {
             bytes_send_client = recv(socket, buffer + len, MAX_BYTES - len, 0);
         }
@@ -363,19 +372,17 @@ void *thread_fn(void *socketNew)
     return NULL;
 }
 
-int main(int argc, char *argv[])//argc has the number of arguments passed to the program and argv is a pointer to the array of character pointers like ./proxy 8080 8080 is the second argv[1]
+int main(int argc, char *argv[]) // argc has the number of arguments passed to the program and argv is a pointer to the array of character pointers like ./proxy 8080 8080 is the second argv[1]
 {
 
     int client_socketId, client_len;             // client_socketId == to store the client socket id
     struct sockaddr_in server_addr, client_addr; // Address of client and server to be assigned
 
-//     struct sockaddr_in {
-//     sa_family_t sin_family;  Address family, AF_INET for IPv4
-//     in_port_t sin_port;      Port number in network byte order
-//     struct in_addr sin_addr;  Internet address
-// };
-
-
+    //     struct sockaddr_in {
+    //     sa_family_t sin_family;  Address family, AF_INET for IPv4
+    //     in_port_t sin_port;      Port number in network byte order
+    //     struct in_addr sin_addr;  Internet address
+    // };
 
     sem_init(&seamaphore, 0, MAX_CLIENTS); // Initializing seamaphore and lock
     pthread_mutex_init(&lock, NULL);       // Initializing lock for cache
@@ -393,27 +400,27 @@ int main(int argc, char *argv[])//argc has the number of arguments passed to the
     printf("Setting Proxy Server Port : %d\n", port_number);
 
     // creating the proxy socket
-    proxy_socketId = socket(AF_INET, SOCK_STREAM, 0);//int domain int type int protocol
-    //AF_INET is used to represent the IPv4 address of the client to which a connection should be made. 
-    //Similarly AF_INET6 is used for IPv6 addresses. These sockets are called internet domain sockets.
-    //In this case, setting the protocol to 0 means that the default protocol (which is TCP for SOCK_STREAM) will be used.
-    if (proxy_socketId < 0)//as in case of error it returns -1
+    proxy_socketId = socket(AF_INET, SOCK_STREAM, 0); // int domain int type int protocol
+    // AF_INET is used to represent the IPv4 address of the client to which a connection should be made.
+    // Similarly AF_INET6 is used for IPv6 addresses. These sockets are called internet domain sockets.
+    // In this case, setting the protocol to 0 means that the default protocol (which is TCP for SOCK_STREAM) will be used.
+    if (proxy_socketId < 0) // as in case of error it returns -1
     {
         perror("Failed to create socket.\n");
         exit(1);
     }
 
-    int reuse = 1; //this is to enable the reuse of the address
+    int reuse = 1; // this is to enable the reuse of the address
 
-    //This option allows the socket to bind to an address that is already in use, 
-    //which is particularly useful for server applications that need to restart 
-    //and bind to the same port without waiting for the previous socket to fully close.
-    if (setsockopt(proxy_socketId, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) < 0)//Casting to const char * is a way to ensure that the pointer is treated as a generic byte pointer, which is suitable for passing data of any type.
-        perror("setsockopt(SO_REUSEADDR) failed\n");//You're right, reuse is an integer variable, so casting it to (const char *) may seem odd at first glance. However, this is a common practice in C programming when working with the setsockopt() function.
-        //  The setsockopt() function expects a const void * pointer as the value parameter, which can point to any data type. By casting &reuse to (const char *), you're telling the compiler to treat the memory address of reuse as a pointer to a sequence of bytes (characters).
-        //sizeof makes sure that 
+    // This option allows the socket to bind to an address that is already in use,
+    // which is particularly useful for server applications that need to restart
+    // and bind to the same port without waiting for the previous socket to fully close.
+    if (setsockopt(proxy_socketId, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) < 0) // Casting to const char * is a way to ensure that the pointer is treated as a generic byte pointer, which is suitable for passing data of any type.
+        perror("setsockopt(SO_REUSEADDR) failed\n");                                                   // You're right, reuse is an integer variable, so casting it to (const char *) may seem odd at first glance. However, this is a common practice in C programming when working with the setsockopt() function.
+    //  The setsockopt() function expects a const void * pointer as the value parameter, which can point to any data type. By casting &reuse to (const char *), you're telling the compiler to treat the memory address of reuse as a pointer to a sequence of bytes (characters).
+    // sizeof makes sure that
     bzero((char *)&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET; //This field specifies the address family, which is typically set to AF_INET for IPv4 addresses.
+    server_addr.sin_family = AF_INET;          // This field specifies the address family, which is typically set to AF_INET for IPv4 addresses.
     server_addr.sin_port = htons(port_number); // Assigning port to the Proxy
     server_addr.sin_addr.s_addr = INADDR_ANY;  // Any available adress assigned
 
@@ -426,7 +433,7 @@ int main(int argc, char *argv[])//argc has the number of arguments passed to the
     printf("Binding on port: %d\n", port_number);
 
     // Proxy socket listening to the requests
-    int listen_status = listen(proxy_socketId, MAX_CLIENTS);//marks the maximum number of connection requests that can be made to the server by client nodes at a time
+    int listen_status = listen(proxy_socketId, MAX_CLIENTS); // marks the maximum number of connection requests that can be made to the server by client nodes at a time
 
     if (listen_status < 0)
     {
@@ -445,8 +452,8 @@ int main(int argc, char *argv[])//argc has the number of arguments passed to the
         client_len = sizeof(client_addr);
 
         // Accepting the connections
-        //The accept() function is a blocking call. This means that when the server reaches this line of code, it will wait (block) until a client attempts to connect to the server.
-        //If there are no pending connection requests in the listen queue, the server will remain blocked at this point until a new client connects.
+        // The accept() function is a blocking call. This means that when the server reaches this line of code, it will wait (block) until a client attempts to connect to the server.
+        // If there are no pending connection requests in the listen queue, the server will remain blocked at this point until a new client connects.
         client_socketId = accept(proxy_socketId, (struct sockaddr *)&client_addr, (socklen_t *)&client_len); // Accepts connection
         if (client_socketId < 0)
         {
@@ -459,17 +466,22 @@ int main(int argc, char *argv[])//argc has the number of arguments passed to the
         }
 
         // Getting IP address and port number of client
-        struct sockaddr_in *client_pt = (struct sockaddr_in *)&client_addr;//Since the server is dealing with IPv4 addresses, it casts client_addr to struct sockaddr_in *, which contains fields specific to IPv4 addresses.
-        struct in_addr ip_addr = client_pt->sin_addr;//this line retrieves the sin_addr field from the client_pt, which contains the client's IP address in binary format (a 32-bit integer).
-        char str[INET_ADDRSTRLEN]; // INET_ADDRSTRLEN: Default ip address size INET_ADDRSTRLEN is typically defined as 16
-        inet_ntop(AF_INET, &ip_addr, str, INET_ADDRSTRLEN);//The inet_ntop() function converts the binary representation of the IP address (ip_addr) into a human-readable string format and stores it in str.
-                                                            //The first argument AF_INET specifies that the address is an IPv4 address.
+        struct sockaddr_in *client_pt = (struct sockaddr_in *)&client_addr; // Since the server is dealing with IPv4 addresses, it casts client_addr to struct sockaddr_in *, which contains fields specific to IPv4 addresses.
+        struct in_addr ip_addr = client_pt->sin_addr;                       // this line retrieves the sin_addr field from the client_pt, which contains the client's IP address in binary format (a 32-bit integer).
+        char str[INET_ADDRSTRLEN];                                          // INET_ADDRSTRLEN: Default ip address size INET_ADDRSTRLEN is typically defined as 16
+        inet_ntop(AF_INET, &ip_addr, str, INET_ADDRSTRLEN);                 // The inet_ntop() function converts the binary representation of the IP address (ip_addr) into a human-readable string format and stores it in str.
+        // The first argument AF_INET specifies that the address is an IPv4 address.
         printf("Client is connected with port number: %d and ip address: %s \n", ntohs(client_addr.sin_port), str);
-        //This line prints the port number and IP address of the connected client.
-        //The port number is retrieved from client_addr.sin_port, which is in network byte order. The ntohs() function converts it to host byte order for correct display.
-        
+        // This line prints the port number and IP address of the connected client.
+        // The port number is retrieved from client_addr.sin_port, which is in network byte order. The ntohs() function converts it to host byte order for correct display.
+
         pthread_create(&tid[i], NULL, thread_fn, (void *)&Connected_socketId[i]); // Creating a thread for each client accepted
-        //After obtaining the client's information, the server typically creates a new thread (or uses a process) to handle the client's requests, allowing it to continue accepting new connections.
+        // After obtaining the client's information, the server typically creates a new thread (or uses a process) to handle the client's requests, allowing it to continue accepting new connections.
+        //&tid[i]: This is a pointer to the thread identifier (TID) for the newly created thread. The pthread_create function will store the unique identifier for the newly created thread in this location. The TID is used to manage and identify the thread later.
+        // NULL: This argument specifies thread attributes. Passing NULL means that the default thread attributes are used.
+        // thread_fn: This is the function that the new thread will execute. It is a pointer to the function that will handle the client request. In this case, it's thread_fn, which processes the client request and performs necessary actions.
+        //(void *)&Connected_socketId[i]: This is the argument passed to the thread_fn function. In this case, it's a pointer to the socket descriptor of the connected client. It is cast to void * because pthread_create requires the argument to be of type void *. Inside thread_fn, this argument is cast back to the appropriate type (i.e., int *) to access the socket descriptor.
+
         i++;
     }
     close(proxy_socketId); // Close socket After the loop (which is actually infinite and only ends if the program is stopped)
