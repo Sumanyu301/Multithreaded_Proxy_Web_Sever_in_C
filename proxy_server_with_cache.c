@@ -239,35 +239,35 @@ int checkHTTPversion(char *msg)
     return version;
 }
 
-void *thread_fn(void *socketNew)// its the new socket creted by accept for every client connected.
+void *thread_fn(void *socketNew) // its the new socket creted by accept for every client connected.
 {
     sem_wait(&seamaphore);
     int p;
-    int *t = (int *)(socketNew);//descriptors are integers so typecasting it back to int
-    int socket = *t;            // Socket is socket descriptor of the connected Client
-    int bytes_send_client, len; // Bytes Transferred
+    int *t = (int *)(socketNew); // descriptors are integers so typecasting it back to int
+    int socket = *t;             // Socket is socket descriptor of the connected Client
+    int bytes_send_client, len;  // Bytes Transferred
 
     char *buffer = (char *)calloc(MAX_BYTES, sizeof(char)); // Creating buffer of 4kb for a client
 
     bzero(buffer, MAX_BYTES);                               // Making buffer zero
     bytes_send_client = recv(socket, buffer, MAX_BYTES, 0); // recv(socket, buffer, MAX_BYTES, 0): Receives data from the client socket and stores it in buffer. The function reads up to MAX_BYTES bytes.
-    //This variable is intended to store the number of bytes received from the socket. The recv function returns the number of bytes actually read into the buffer. If the return value is -1, it indicates an error occurred during the reception of data
-    //This is a pointer to a memory area (an array) where the received data will be stored. The buffer should be large enough to hold the incoming data. The data received will be copied into this buffer starting from the first byte.
-    //if the data being received is larger than the specified MAX_BYTES in the recv() function, the data will not automatically be received in multiple calls. Instead, the recv() function will only read up to MAX_BYTES bytes in a single call.
-    //0: No special options; the function behaves normally.
+    // This variable is intended to store the number of bytes received from the socket. The recv function returns the number of bytes actually read into the buffer. If the return value is -1, it indicates an error occurred during the reception of data
+    // This is a pointer to a memory area (an array) where the received data will be stored. The buffer should be large enough to hold the incoming data. The data received will be copied into this buffer starting from the first byte.
+    // if the data being received is larger than the specified MAX_BYTES in the recv() function, the data will not automatically be received in multiple calls. Instead, the recv() function will only read up to MAX_BYTES bytes in a single call.
+    // 0: No special options; the function behaves normally.
 
-//Here’s a simplified example of an HTTP GET request
-//GET /index.html HTTP/1.1\r\n
-// Host: www.example.com\r\n
-// User-Agent: Mozilla/5.0\r\n
-// Accept: text/html\r\n
-// \r\n
+    // Here’s a simplified example of an HTTP GET request
+    // GET /index.html HTTP/1.1\r\n
+    //  Host: www.example.com\r\n
+    //  User-Agent: Mozilla/5.0\r\n
+    //  Accept: text/html\r\n
+    //  \r\n
 
-    while (bytes_send_client > 0)//data chunks mein aayega isliye loop
+    while (bytes_send_client > 0) // data chunks mein aayega isliye loop
     {
-        len = strlen(buffer);//This line calculates the current length of the data stored in buffer. This is important because it determines where to append new data received from the socket.
+        len = strlen(buffer); // This line calculates the current length of the data stored in buffer. This is important because it determines where to append new data received from the socket.
         // loop until u find "\r\n\r\n" in the buffer
-        if (strstr(buffer, "\r\n\r\n") == NULL)//If "\r\n\r\n" is found in the buffer, the loop breaks, indicating that the complete HTTP headers have been received.
+        if (strstr(buffer, "\r\n\r\n") == NULL) // If "\r\n\r\n" is found in the buffer, the loop breaks, indicating that the complete HTTP headers have been received.
         {
             bytes_send_client = recv(socket, buffer + len, MAX_BYTES - len, 0);
         }
@@ -277,9 +277,9 @@ void *thread_fn(void *socketNew)// its the new socket creted by accept for every
         }
     }
 
-    printf("--------------------------------------------\n");
-    printf("%s\n",buffer);
-    printf("----------------------%d----------------------\n",strlen(buffer));
+    // printf("--------------------------------------------\n");
+    // printf("%s\n", buffer);
+    // printf("----------------------%d----------------------\n", strlen(buffer));
 
     char *tempReq = (char *)malloc(strlen(buffer) * sizeof(char) + 1);
     // tempReq, buffer both store the http request sent by client
@@ -294,18 +294,19 @@ void *thread_fn(void *socketNew)// its the new socket creted by accept for every
     if (temp != NULL)
     {
         // request found in cache, so sending the response to client from proxy's cache
-        int size = temp->len / sizeof(char);
+        int size = temp->len;
         int pos = 0;
         char response[MAX_BYTES];
         while (pos < size)
         {
             bzero(response, MAX_BYTES);
-            for (int i = 0; i < MAX_BYTES; i++)
+            int bytes_to_send = (size - pos < MAX_BYTES) ? size - pos : MAX_BYTES;
+            for (int i = 0; i < bytes_to_send; i++)
             {
                 response[i] = temp->data[pos];
                 pos++;
             }
-            send(socket, response, MAX_BYTES, 0);
+            send(socket, response, bytes_to_send, 0);
         }
         printf("Data retrived from the Cache\n\n");
         printf("%s\n\n", response);
