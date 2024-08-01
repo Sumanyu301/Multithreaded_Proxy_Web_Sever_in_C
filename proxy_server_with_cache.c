@@ -100,7 +100,8 @@ int sendErrorMessage(int socket, int status_code)
     return 1;
 }
 
-int connectRemoteServer(char *host_addr, int port_num)
+
+int connectRemoteServer(char *host_addr, int port_num)//request->host is the host address and request->port is the port number
 {
     // Creating Socket for remote server ---------------------------
 
@@ -115,6 +116,8 @@ int connectRemoteServer(char *host_addr, int port_num)
     // Get host by the name or ip address provided
 
     struct hostent *host = gethostbyname(host_addr);
+    //Input: The function takes a single argument, host_addr, which is a string containing the hostname to be resolved.
+    //DNS Resolution: Internally, gethostbyname performs a DNS lookup to resolve the provided hostname into an IP address. This involves querying the DNS system to obtain the corresponding address.
     if (host == NULL)
     {
         fprintf(stderr, "No such host exists.\n");
@@ -141,7 +144,10 @@ int connectRemoteServer(char *host_addr, int port_num)
     return remoteSocket;
 }
 
-int handle_request(int clientSocket, struct ParsedRequest *request, char *tempReq)
+
+//The handle_request function processes an incoming HTTP request from a client, constructs a corresponding request to a remote server, sends it, and forwards the response back to the client. Key operations include managing headers, establishing a connection to the remote server, handling data transmission, and caching the response for future requests. This function is crucial for the operation of a proxy server, which acts as an intermediary between clients and remote servers.
+
+int handle_request(int clientSocket, struct ParsedRequest *request, char *tempReq)//tempreq is buffer and request is the parsed request socket is the client socket
 {
     char *buf = (char *)malloc(sizeof(char) * MAX_BYTES);
     strcpy(buf, "GET ");
@@ -149,14 +155,16 @@ int handle_request(int clientSocket, struct ParsedRequest *request, char *tempRe
     strcat(buf, " ");
     strcat(buf, request->version);
     strcat(buf, "\r\n");
-
+    //The HTTP method (GET), request path, and version are concatenated to form the complete HTTP request line.
     size_t len = strlen(buf);
 
-    if (ParsedHeader_set(request, "Connection", "close") < 0)
+    if (ParsedHeader_set(request, "Connection", "close") < 0)//The function sets the Connection header to close, indicating that the server should close the connection after the response is sent.
     {
         printf("set header key not work\n");
     }
 
+    //The function checks if the Host header is present in the parsed request.
+    //If not, it sets the Host header to the value specified in the request. This is necessary for HTTP/1.1 requests.
     if (ParsedHeader_get(request, "Host") == NULL)
     {
         if (ParsedHeader_set(request, "Host", request->host) < 0)
@@ -165,7 +173,7 @@ int handle_request(int clientSocket, struct ParsedRequest *request, char *tempRe
         }
     }
 
-    if (ParsedRequest_unparse_headers(request, buf + len, (size_t)MAX_BYTES - len) < 0)
+    if (ParsedRequest_unparse_headers(request, buf + len, (size_t)MAX_BYTES - len) < 0)//The function attempts to unparse any additional headers from the ParsedRequest structure and append them to the buffer.
     {
         printf("unparse failed\n");
         // return -1;				// If this happens Still try to send request without header
@@ -193,7 +201,7 @@ int handle_request(int clientSocket, struct ParsedRequest *request, char *tempRe
     {
         bytes_send = send(clientSocket, buf, bytes_send, 0);
 
-        for (int i = 0; i < bytes_send / sizeof(char); i++)
+        for (int i = 0; i < bytes_send; i++)
         {
             temp_buffer[temp_buffer_index] = buf[i];
             // printf("%c",buf[i]); // Response Printing
@@ -251,7 +259,7 @@ void *thread_fn(void *socketNew) // its the new socket creted by accept for ever
 
     bzero(buffer, MAX_BYTES);                               // Making buffer zero
     bytes_send_client = recv(socket, buffer, MAX_BYTES, 0); // recv(socket, buffer, MAX_BYTES, 0): Receives data from the client socket and stores it in buffer. The function reads up to MAX_BYTES bytes.
-    // This variable is intended to store the number of bytes received from the socket. The recv function returns the number of bytes actually read into the buffer. If the return value is -1, it indicates an error occurred during the reception of data
+    // """"This variable is intended to store the number of bytes received from the socket""". The recv function returns the number of bytes actually read into the buffer. If the return value is -1, it indicates an error occurred during the reception of data
     // This is a pointer to a memory area (an array) where the received data will be stored. The buffer should be large enough to hold the incoming data. The data received will be copied into this buffer starting from the first byte.
     // if the data being received is larger than the specified MAX_BYTES in the recv() function, the data will not automatically be received in multiple calls. Instead, the recv() function will only read up to MAX_BYTES bytes in a single call.
     // 0: No special options; the function behaves normally.
@@ -289,6 +297,10 @@ void *thread_fn(void *socketNew) // its the new socket creted by accept for ever
     }
 
     // checking for the request in cache
+    // Assuming tempReq is a string (char array)
+    // printf("Value of tempReq: %s\n", tempReq);
+
+        // Call the find function with tempReq
     struct cache_element *temp = find(tempReq);
 
     if (temp != NULL)
@@ -315,11 +327,11 @@ void *thread_fn(void *socketNew) // its the new socket creted by accept for ever
         // return NULL;
     }
 
-    else if (bytes_send_client > 0)
+    else if (bytes_send_client > 0)//we recv the request from the client into this and it stores the number of bytes received
     {
-        len = strlen(buffer);
+        len = strlen(buffer);//buffer has the request from the client
         // Parsing the request
-        struct ParsedRequest *request = ParsedRequest_create();
+        struct ParsedRequest *request = ParsedRequest_create();//request is a struct that stores the parsed request its defined in proxy_parse.h
 
         // ParsedRequest_parse returns 0 on success and -1 on failure.On success it stores parsed request in
         //  the request
@@ -464,6 +476,7 @@ int main(int argc, char *argv[]) // argc has the number of arguments passed to t
         else
         {
             Connected_socketId[i] = client_socketId; // Storing accepted client into array
+            
         }
 
         // Getting IP address and port number of client
@@ -489,10 +502,11 @@ int main(int argc, char *argv[]) // argc has the number of arguments passed to t
     return 0;
 }
 
-cache_element *find(char *url)
+cache_element *find(char *url)//we are sending the whole request as url 
 {
-
+    
     // Checks for url in the cache if found returns pointer to the respective cache element or else returns NULL
+        printf("Searching for URL: %s\n", url);
     cache_element *site = NULL;
     // sem_wait(&cache_lock);
     int temp_lock_val = pthread_mutex_lock(&lock);
@@ -502,8 +516,9 @@ cache_element *find(char *url)
         site = head;
         while (site != NULL)
         {
-            if (!strcmp(site->url, url))
+            if (!strcmp(site->url, url))//strcmp return 0 if both strings are equal
             {
+                printf("URL->site: %s\n", site->url);
                 printf("LRU Time Track Before : %ld", site->lru_time_track);
                 printf("\nurl found\n");
                 // Updating the time_track
