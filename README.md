@@ -5,8 +5,7 @@ This is a simple proxy webserver implementation written in [programming language
 ## Installation
 
 1. Clone the repository: `git clone https://github.com/sumanyu301/proxy_webserver.git`
-2. Navigate to the project directory: `cd proxy_webserver`
-3. Run the command `make all`
-4. `/proxy <port no.>`
+2. Run the command `make all`
+3. `./proxy <port no.>`
 
 then make a get request like `http://localhost:port/https://www.cs.princeton.edu/`
